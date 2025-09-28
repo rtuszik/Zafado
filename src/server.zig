@@ -9,7 +9,7 @@ pub const Server = struct {
 
     pub fn init(allocator: std.mem.Allocator, queue: *Queue, port: u16) !Server {
         // create listen addr
-        const address = try std.net.Address.parseIp("127.0.0.1", port);
+        const address = try std.net.Address.parseIp("0.0.0.0", port);
 
         // create server, bind to  addr
         const server = try address.listen(.{});
@@ -22,6 +22,7 @@ pub const Server = struct {
             .server = server,
         };
     }
+
     pub fn deinit(self: *Server) void {
         self.server.deinit();
     }
@@ -97,6 +98,7 @@ pub const Server = struct {
 
             const response = "HTTP/1.1 201 Created\r\nContent-Length: 14\r\n\r\nTodo printed! \n";
             _ = try connection.stream.write(response);
+
         } else if (std.mem.eql(u8, request_method, "GET") and std.mem.eql(u8, path, "/status")) {
             const count = self.queue.count();
 
