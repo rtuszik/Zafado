@@ -23,7 +23,14 @@ pub const Config = struct {
     };
 
     pub fn deinit(self: *Config, allocator: std.mem.Allocator) void {
-        allocator.free(self.printer.ip);
+        switch (self.printer) {
+            .network => |net| {
+                allocator.free(net.ip);
+            },
+            .usb => |usb| {
+                allocator.free(usb.device);
+            },
+        }
     }
 };
 
