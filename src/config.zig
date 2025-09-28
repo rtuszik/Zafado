@@ -22,8 +22,13 @@ pub fn load(allocator: std.mem.Allocator, path: []const u8) !Config {
     const file = try std.fs.cwd().openFile(path, .{});
     defer file.close();
 
-    const file_size = try file.getEndPos();
+    const raw_file_size = try file.getEndPos();
+    if (raw_file_size > std.math.maxInt(usize)) {
+        return error.FileTooLarge;
+    }
+    const file_size: usize = @intCast(raw_file_size);
     const contents = try allocator.alloc(u8, file_size);
+
     defer allocator.free(contents);
     _ = try file.read(contents);
 
@@ -53,9 +58,9 @@ pub fn load(allocator: std.mem.Allocator, path: []const u8) !Config {
         } else if (std.mem.eql(u8, key, "server.port")) {
             config.server.port = try std.fmt.parseInt(u16, value, 10);
         }
-
-        log.info("Config Loaded: printer={s}:{}, server port = {}", .{ config.printer.ip, config.printer.port, config.server.port });
     }
+
+    log.info("Config Loaded: printer={s}:{}, server port = {}", .{ config.printer.ip, config.printer.port, config.server.port });
 
     return config;
 }
