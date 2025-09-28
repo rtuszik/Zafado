@@ -5,14 +5,23 @@ pub const Config = struct {
     printer: PrinterConfig,
     server: ServerConfig,
 
-    pub const PrinterConfig = struct {
-        ip: []const u8,
-        port: u16,
+    pub const PrinterConfig = union(enum) {
+        network: Network,
+        usb: Usb,
+
+        pub const Network = struct {
+            ip: []const u8,
+            port: u16,
+        };
+        pub const Usb = struct {
+            device: []const u8,
+        };
     };
 
     pub const ServerConfig = struct {
         port: u16,
     };
+
     pub fn deinit(self: *Config, allocator: std.mem.Allocator) void {
         allocator.free(self.printer.ip);
     }
