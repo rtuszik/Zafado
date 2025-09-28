@@ -1,0 +1,13 @@
+# Zafado Configuration File
+
+# Printer Settings
+printer.type = "network"  # or "usb"
+
+printer.ip=192.168.99.99 
+printer.port=9100
+
+# Server Settings
+server.port=8080
+
+# USB settings 
+printer.usb.device = "/dev/usb/lp0"

@@ -9,6 +9,7 @@ pub const Server = struct {
 
     pub fn init(allocator: std.mem.Allocator, queue: *Queue, port: u16) !Server {
         // create listen addr
+        // TODO make configurable
         const address = try std.net.Address.parseIp("0.0.0.0", port);
 
         // create server, bind to  addr
