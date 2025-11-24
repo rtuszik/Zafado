@@ -2,9 +2,12 @@
 
 Simple ToDo Printing for ESC/POS Printers
 
+> [!NOTE]
+> This is mostly a PoC at this point in time and will probably not work with your printer.
+
 ## Overview
 
-A lightweight HTTP server that accepts todo items via API and prints them instantly on ESC/POS thermal printers. Built as a learning project to explore Zig programming.
+A lightweight HTTP server that accepts todo items via API and prints them instantly on ESC/POS thermal printers.
 
 ## Features
 
@@ -15,6 +18,14 @@ A lightweight HTTP server that accepts todo items via API and prints them instan
 
 ## Quick Start
 
+Requires Zig 0.14.1
+
+```bash
+zig build run
+```
+
 ## API Endpoints
 
-## Printer Support
+- `POST /todo`: Print raw body text
+- `GET /status`: Get queue size
+
