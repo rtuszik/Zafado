@@ -34,6 +34,8 @@ pub const Config = struct {
     }
 };
 
+// TODO update parsing and printer construction for both usb and network support
+
 pub fn load(allocator: std.mem.Allocator, path: []const u8) !Config {
     const file = try std.fs.cwd().openFile(path, .{});
     defer file.close();
@@ -46,12 +48,16 @@ pub fn load(allocator: std.mem.Allocator, path: []const u8) !Config {
     const contents = try allocator.alloc(u8, file_size);
 
     defer allocator.free(contents);
-    _ = try file.read(contents);
+    var reader_buf: [4096]u8 = undefined;
+    var reader = file.reader(&reader_buf);
+    try reader.interface.readSliceAll(contents);
 
     var config = Config{
         .printer = .{
-            .ip = try allocator.dupe(u8, "192.168.1.1"),
-            .port = 9100,
+            .network = .{
+                .ip = try allocator.dupe(u8, "192.168.1.1"),
+                .port = 9100,
+            },
         },
         .server = .{
             .port = 8080,
@@ -68,15 +74,15 @@ pub fn load(allocator: std.mem.Allocator, path: []const u8) !Config {
         const value = std.mem.trim(u8, line[eq_index + 1 ..], " \t");
 
         if (std.mem.eql(u8, key, "printer.ip")) {
-            config.printer.ip = try allocator.dupe(u8, value);
+            config.printer.network.ip = try allocator.dupe(u8, value);
         } else if (std.mem.eql(u8, key, "printer.port")) {
-            config.printer.port = try std.fmt.parseInt(u16, value, 10);
+            config.printer.network.port = try std.fmt.parseInt(u16, value, 10);
         } else if (std.mem.eql(u8, key, "server.port")) {
             config.server.port = try std.fmt.parseInt(u16, value, 10);
         }
     }
 
-    log.info("Config Loaded: printer={s}:{}, server port = {}", .{ config.printer.ip, config.printer.port, config.server.port });
+    log.info("Config Loaded: printer={s}:{}, server port = {}", .{ config.printer.network.ip, config.printer.network.port, config.server.port });
 
     return config;
 }

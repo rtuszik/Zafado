@@ -14,7 +14,7 @@ pub const Queue = struct {
     pub fn init(allocator: std.mem.Allocator, printer: *Printer) Queue {
         log.debug("Initializing Queue", .{});
         return Queue{
-            .items = std.ArrayList(Todo).init(allocator),
+            .items = .{},
             .printer = printer,
             .allocator = allocator,
         };
@@ -22,7 +22,7 @@ pub const Queue = struct {
 
     pub fn deinit(self: *Queue) void {
         log.debug("Deinitialized Queue", .{});
-        self.items.deinit();
+        self.items.deinit(self.allocator);
     }
 
     pub fn add(self: *Queue, text: []const u8) !void {
@@ -30,7 +30,7 @@ pub const Queue = struct {
             log.warn("Print failed: {}, queueing todo: {s}", .{ err, text });
 
             const todo = Todo{ .text = text };
-            try self.items.append(todo);
+            try self.items.append(self.allocator, todo);
             return;
         };
         log.info("Successfully printed: {s}", .{text});
@@ -52,7 +52,7 @@ pub const Queue = struct {
             };
 
             log.info("Successfully printed queued item: {s}", .{todo.text});
-            _ = self.items.orderedRemove(i);
+            _ = self.items.orderedRemove(self.allocator, i);
         }
     }
 };
