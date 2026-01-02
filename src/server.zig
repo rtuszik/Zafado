@@ -34,7 +34,7 @@ pub const Server = struct {
         while (true) {
             const connection = try self.server.accept();
 
-            log.info("Got conection from {}", .{connection.address});
+            log.info("Got conection from {f}", .{connection.address});
 
             self.handleConnection(connection) catch |err| {
                 log.err("Failed to handle connection: {}", .{err});
@@ -45,9 +45,12 @@ pub const Server = struct {
     pub fn handleConnection(self: *Server, connection: std.net.Server.Connection) !void {
         defer connection.stream.close();
 
+        var read_buf: [4096]u8 = undefined;
         var buffer: [1024]u8 = undefined;
 
-        const bytes_read = try connection.stream.read(&buffer);
+        // Use buffered reader
+        var reader = connection.stream.reader(&read_buf);
+        const bytes_read = try reader.interface().readSliceShort(&buffer);
 
         if (bytes_read == 0) {
             log.debug("Empty request received", .{});
@@ -62,6 +65,10 @@ pub const Server = struct {
     }
 
     pub fn parseAndHandle(self: *Server, connection: std.net.Server.Connection, request: []const u8) !void {
+        // Prepare buffered writer
+        var write_buf: [4096]u8 = undefined;
+        var writer = connection.stream.writer(&write_buf);
+
         // check for http header separator
         const header_end = std.mem.indexOf(u8, request, "\r\n\r\n");
 
@@ -92,13 +99,15 @@ pub const Server = struct {
         if (std.mem.eql(u8, request_method, "POST") and std.mem.eql(u8, path, "/todo")) {
             if (body.len == 0) {
                 const response = "HTTP/1.1 201 Created\r\nContent-Length: 14\r\n\r\nTodo printed!\n";
-                _ = try connection.stream.write(response);
+                _ = try writer.interface.writeAll(response);
+                try writer.interface.flush();
                 return;
             }
             try self.queue.add(body);
 
             const response = "HTTP/1.1 201 Created\r\nContent-Length: 14\r\n\r\nTodo printed! \n";
-            _ = try connection.stream.write(response);
+            _ = try writer.interface.writeAll(response);
+            try writer.interface.flush();
 
         } else if (std.mem.eql(u8, request_method, "GET") and std.mem.eql(u8, path, "/status")) {
             const count = self.queue.count();
@@ -110,10 +119,12 @@ pub const Server = struct {
 
             defer self.allocator.free(response);
 
-            _ = try connection.stream.write(response);
+            _ = try writer.interface.writeAll(response);
+            try writer.interface.flush();
         } else {
             const response = "HTTP/1.1 404 Not Found\r\nContent-Length: 9\r\n\r\nNotFound";
-            _ = try connection.stream.write(response);
+            _ = try writer.interface.writeAll(response);
+            try writer.interface.flush();
         }
     }
 };
