@@ -48,12 +48,10 @@ pub const Server = struct {
     pub fn handleConnection(self: *Server, connection: net.Server.Connection) !void {
         defer connection.stream.close();
 
-        var read_buf: [4096]u8 = undefined;
         var buffer: [1024]u8 = undefined;
 
         // Use buffered reader
-        var reader = connection.stream.reader(&read_buf);
-        const bytes_read = try reader.interface().readSliceShort(&buffer);
+        const bytes_read = try connection.stream.read(&buffer);
 
         if (bytes_read == 0) {
             log.debug("Empty request received", .{});
