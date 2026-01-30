@@ -1,16 +1,19 @@
 const std = @import("std");
+const net = std.net;
+const mem = std.mem;
 const Queue = @import("queue.zig").Queue;
 const log = std.log.scoped(.server);
 
 pub const Server = struct {
-    allocator: std.mem.Allocator,
+    allocator: mem.Allocator,
     queue: *Queue,
-    server: std.net.Server,
+    server: net.Server,
 
-    pub fn init(allocator: std.mem.Allocator, queue: *Queue, port: u16) !Server {
+    pub fn init(allocator: mem.Allocator, queue: *Queue, port: u16) !Server {
         // create listen addr
         // TODO make configurable
-        const address = try std.net.Address.parseIp("0.0.0.0", port);
+        // resolveIP supports ipv6, rest doesn't yet.
+        const address = try net.Address.resolveIp("0.0.0.0", port);
 
         // create server, bind to  addr
         const server = try address.listen(.{});
@@ -42,7 +45,7 @@ pub const Server = struct {
         }
     }
 
-    pub fn handleConnection(self: *Server, connection: std.net.Server.Connection) !void {
+    pub fn handleConnection(self: *Server, connection: net.Server.Connection) !void {
         defer connection.stream.close();
 
         var read_buf: [4096]u8 = undefined;
@@ -64,13 +67,13 @@ pub const Server = struct {
         try self.parseAndHandle(connection, request);
     }
 
-    pub fn parseAndHandle(self: *Server, connection: std.net.Server.Connection, request: []const u8) !void {
+    pub fn parseAndHandle(self: *Server, connection: net.Server.Connection, request: []const u8) !void {
         // Prepare buffered writer
         var write_buf: [4096]u8 = undefined;
         var writer = connection.stream.writer(&write_buf);
 
         // check for http header separator
-        const header_end = std.mem.indexOf(u8, request, "\r\n\r\n");
+        const header_end = mem.indexOf(u8, request, "\r\n\r\n");
 
         //if separator exists, header is everything before, else no body exists.
         const headers = if (header_end) |end| request[0..end] else request;
@@ -81,12 +84,12 @@ pub const Server = struct {
         else
             "";
 
-        const first_line_end = std.mem.indexOf(u8, headers, "\r\n") orelse headers.len;
+        const first_line_end = mem.indexOf(u8, headers, "\r\n") orelse headers.len;
         const first_line = headers[0..first_line_end];
 
         // splitting first line into parts to extract methid, path and protocol.
         // e.g. "POST", "/todo", "HTTP/1.1"
-        var parts = std.mem.tokenizeScalar(u8, first_line, ' ');
+        var parts = mem.tokenizeScalar(u8, first_line, ' ');
 
         // return error if method or parts don't exist
         const request_method = parts.next() orelse return error.InvalidRequest;
@@ -95,8 +98,8 @@ pub const Server = struct {
         const protocol = parts.next();
         log.info("Request: {s} {s} {?s}", .{ request_method, path, protocol });
 
-        // using std.mem.eql to compare string contents byte by byte. (request_method == "POST" would compare addresses in memory and not text)
-        if (std.mem.eql(u8, request_method, "POST") and std.mem.eql(u8, path, "/todo")) {
+        // using mem.eql to compare string contents byte by byte. (request_method == "POST" would compare addresses in memory and not text)
+        if (mem.eql(u8, request_method, "POST") and mem.eql(u8, path, "/todo")) {
             if (body.len == 0) {
                 const response = "HTTP/1.1 201 Created\r\nContent-Length: 14\r\n\r\nTodo printed!\n";
                 _ = try writer.interface.writeAll(response);
@@ -108,8 +111,7 @@ pub const Server = struct {
             const response = "HTTP/1.1 201 Created\r\nContent-Length: 14\r\n\r\nTodo printed! \n";
             _ = try writer.interface.writeAll(response);
             try writer.interface.flush();
-
-        } else if (std.mem.eql(u8, request_method, "GET") and std.mem.eql(u8, path, "/status")) {
+        } else if (mem.eql(u8, request_method, "GET") and mem.eql(u8, path, "/status")) {
             const count = self.queue.count();
 
             const response_body = try std.fmt.allocPrint(self.allocator, "Queue has {} items\n", .{count});
